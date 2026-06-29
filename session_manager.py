@@ -2,7 +2,7 @@
 import os, shutil
 from datetime import datetime
 
-SESSION_DIR = "/storage/emulated/0/Download/DIX_SESSION_DATA"
+SESSION_DIR = "./sessions"
 
 def list_sessions():
     if not os.path.exists(SESSION_DIR):

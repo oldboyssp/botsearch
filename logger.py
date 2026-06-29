@@ -2,7 +2,7 @@
 import os, time
 from datetime import datetime
 
-LOG_DIR = "/storage/emulated/0/Download/DIX_LOGS"
+LOG_DIR = "./logs"
 LOG_FILE = f"{LOG_DIR}/bot.log"
 ERROR_FILE = f"{LOG_DIR}/errors.log"
 ACCESS_FILE = f"{LOG_DIR}/access.log"

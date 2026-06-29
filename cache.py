@@ -1,7 +1,7 @@
 
 import json, os, time
 
-CACHE_DIR = "/storage/emulated/0/Download/DIX_CACHE"
+CACHE_DIR = "./cache_data"
 CACHE_TTL = 3600  # Время жизни кэша — 1 час
 
 def get_cache(key):

@@ -1,8 +1,8 @@
 
 import sqlite3, json, os, time
 
-DB_PATH = "/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_results.db"
-WHITELIST_FILE = "/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_whitelist.json"
+DB_PATH = "./dix_results.db"
+WHITELIST_FILE = "./dix_whitelist.json"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
