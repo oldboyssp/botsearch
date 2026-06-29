@@ -4,7 +4,7 @@ API_HASH = "b18441a1ff607e10a989891a5462e627"
 BOT_TOKEN = "7968692327:AAHbj9lrD0BXgtls0vfbFHBQdQYiU2MqxSw"
 ADMIN_ID = 1913718956
 
-SESSION_PATH = "/storage/emulated/0/Download/DIX_SESSION_DATA/dixbot"
+SESSION_PATH = "./sessions/dixbot"
 BOT_SESSION = "dix_telegram_bot"
 SEARCH_BOT = "@sjgdfj0ghjdhjjegtjjebot"
 
@@ -15,7 +15,7 @@ INTELX_KEY = "e918253c-b46d-41c4-ba23-f1247eba5293"
 IPINFO_KEY = "1d26e0613d1988"
 SHODAN_KEY = "DF7LYF16WVqSCW5C715egWBpnS03y6si"
 
-DATABASE_FILE = "/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_results.db"
-WHITELIST_FILE = "/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_whitelist.json"
-MIRRORS_FILE = "/storage/emulated/0/Download/DIX_MIRRORS/mirrors.json"
-CACHE_DIR = "/storage/emulated/0/Download/DIX_CACHE"
+DATABASE_FILE = "./dix_results.db"
+WHITELIST_FILE = "./dix_whitelist.json"
+MIRRORS_FILE = "./mirrors/mirrors.json"
+CACHE_DIR = "./cache_data"
