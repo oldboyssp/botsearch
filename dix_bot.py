@@ -119,7 +119,7 @@ bot_statistics: Dict[str, Any] = {
 
 def init_database() -> None:
     """Инициализация SQLite базы данных."""
-    os.makedirs(os.path.dirname(DATABASE_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(DATABASE_FILE)), exist_ok=True)
     connection = sqlite3.connect(DATABASE_FILE)
     cursor = connection.cursor()
     
