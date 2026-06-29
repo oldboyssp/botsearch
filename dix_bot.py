@@ -91,7 +91,7 @@ user_last_request: Dict[int, float] = {}
 user_request_count: Dict[int, List[float]] = defaultdict(list)
 banned_users: Dict[int, Dict[str, Any]] = {}
 muted_users: Dict[int, Dict[str, Any]] = {}
-# registered_users отключены
+registered_users: Dict[int, Dict[str, Any]] = {}
 
 FLOOD_LIMIT: int = 5  # Максимум запросов за период
 FLOOD_PERIOD: int = 10  # Период в секундах
