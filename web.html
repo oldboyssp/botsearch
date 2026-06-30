@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DIX OSINT — Проект #Амнезия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #010106;
+            color: #c8c8d8;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        canvas#bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* ЭКРАН ПРИВЕТСТВИЯ */
+        #welcomeScreen {
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #welcomeScreen .icon {
+            font-size: 70px;
+            animation: floatIcon 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 35px rgba(124,108,248,0.5));
+        }
+
+        @keyframes floatIcon {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-14px);
+            }
+        }
+
+        #welcomeScreen h1 {
+            font-size: 30px;
+            font-weight: 900;
+            color: #f0f0f8;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+
+        #welcomeScreen .subtitle {
+            font-size: 12px;
+            color: #6e6e98;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        #welcomeScreen .startButton {
+            margin-top: 40px;
+            padding: 18px 60px;
+            background: linear-gradient(135deg, #6858e0, #7c6cf8);
+            color: #ffffff;
+            border: none;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 0.8px;
+            box-shadow: 0 14px 50px rgba(124,108,248,0.45);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+            animation: pulseButton 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseButton {
+            0%, 100% {
+                box-shadow: 0 14px 50px rgba(124,108,248,0.45);
+            }
+            50% {
+                box-shadow: 0 22px 70px rgba(124,108,248,0.75);
+            }
+        }
+
+        #welcomeScreen .startButton:hover {
+            transform: translateY(-5px) scale(1.04);
+            box-shadow: 0 20px 60px rgba(124,108,248,0.6);
+        }
+
+        #welcomeScreen .startButton:active {
+            transform: scale(0.94);
+            transition: transform 0.15s ease;
+        }
+
+        /* ЭКРАН МЕНЮ */
+        #menuScreen {
+            display: none;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        #menuScreen.visible {
+            display: block;
+        }
+
+        .statusPill {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: rgba(14,14,34,0.8);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .statusPill .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .statusPill.online .dot {
+            background: #2ecc71;
+            box-shadow: 0 0 10px rgba(46,204,113,0.7);
+            animation: dotBlink 2s ease-in-out infinite;
+        }
+
+        .statusPill.offline .dot {
+            background: #e74c3c;
+            box-shadow: 0 0 10px rgba(231,76,60,0.7);
+        }
+
+        .statusPill.checking .dot {
+            background: #f39c12;
+            animation: dotBlink 1s ease-in-out infinite;
+        }
+
+        @keyframes dotBlink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .cardPanel {
+            background: rgba(10,10,26,0.85);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 24px;
+            padding: 26px 20px;
+            box-shadow: 0 12px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            margin-bottom: 14px;
+        }
+
+        .cardTitle {
+            font-size: 10px;
+            color: #565680;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        .reminderText {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .reminderText .main {
+            font-size: 13px;
+            color: #a0a0c8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .reminderText .sub {
+            font-size: 10px;
+            color: #565680;
+            margin-top: 4px;
+        }
+
+        .buttonGrid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .menuButton {
+            background: linear-gradient(180deg, rgba(20,20,44,0.95) 0%, rgba(14,14,34,0.95) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 26px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+
+        .menuButton:hover {
+            background: linear-gradient(180deg, rgba(28,28,56,0.98) 0%, rgba(18,18,40,0.98) 100%);
+            border-color: rgba(124,108,248,0.6);
+            transform: translateY(-6px);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.7), 0 0 40px rgba(124,108,248,0.15);
+        }
+
+        .menuButton:active {
+            transform: scale(0.94) translateY(-2px);
+            transition: transform 0.15s ease;
+        }
+
+        .menuButton .btnIcon {
+            font-size: 30px;
+            margin-bottom: 10px;
+            display: inline-block;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+        }
+
+        .menuButton:hover .btnIcon {
+            transform: scale(1.15);
+        }
+
+        .menuButton .btnLabel {
+            font-size: 11px;
+            font-weight: 700;
+            color: #c8c8e0;
+            letter-spacing: 0.5px;
+            transition: color 0.4s;
+        }
+
+        .menuButton:hover .btnLabel {
+            color: #e0e0f8;
+        }
+
+        /* МОДАЛЬНОЕ ОКНО */
+        #searchModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #searchModal.visible {
+            display: flex;
+        }
+
+        .modalBox {
+            background: #0c0c20;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 28px 20px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modalInput {
+            width: 100%;
+            padding: 15px 16px;
+            background: #0e0e22;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            color: #d0d0e0;
+            font-size: 15px;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            outline: none;
+            margin-bottom: 12px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .modalInput:focus {
+            border-color: rgba(124,108,248,0.5);
+            box-shadow: 0 0 0 3px rgba(124,108,248,0.06), inset 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .modalInput::placeholder {
+            color: #363658;
+        }
+
+        .actionButton {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+        }
+
+        .actionButton.primary {
+            background: linear-gradient(135deg, #6858e0, #7c6cf8);
+            color: #ffffff;
+            box-shadow: 0 10px 35px rgba(124,108,248,0.35);
+            margin-bottom: 8px;
+        }
+
+        .actionButton.primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 18px 50px rgba(124,108,248,0.6);
+        }
+
+        .actionButton.secondary {
+            background: transparent;
+            color: #6a6a90;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .actionButton.secondary:hover {
+            background: rgba(255,255,255,0.03);
+            color: #b0b0d0;
+        }
+
+        .resultBox {
+            background: #0e0e22;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 18px;
+            padding: 18px;
+            margin-top: 12px;
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .resultBox.visible {
+            display: block;
+        }
+
+        .resultRow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .resultRow:last-child {
+            border-bottom: none;
+        }
+
+        .resultKey {
+            font-size: 10px;
+            color: #565680;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            font-weight: 700;
+        }
+
+        .resultValue {
+            font-size: 13px;
+            color: #d8d8f0;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-top-color: #7c6cf8;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 10px;
+            color: #2e2e50;
+        }
+
+        .footer a {
+            color: #4a4a78;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="app">
+        <!-- ЭКРАН ПРИВЕТСТВИЯ -->
+        <div id="welcomeScreen">
+            <div class="icon">🕵️</div>
+            <h1>Проект #Амнезия</h1>
+            <div class="subtitle">
+                DIX OSINT — сервис проверки<br>
+                публичной информации<br>
+                и цифровых следов пользователя
+            </div>
+            <button class="startButton" id="startButton">▶ Начать</button>
+        </div>
+
+        <!-- ЭКРАН МЕНЮ -->
+        <div id="menuScreen">
+            <div class="statusPill checking" id="statusPill">
+                <span class="dot"></span>
+                <span id="statusText">Проверка серверов...</span>
+            </div>
+
+            <div class="reminderText">
+                <div class="main">📢 Вы забыли, но мы напомним</div>
+                <div class="sub">все данные доступны в один клик</div>
+            </div>
+
+            <div class="cardPanel">
+                <div class="cardTitle">📋 ВЫБЕРИТЕ ДЕЙСТВИЕ</div>
+                <div class="buttonGrid">
+                    <div class="menuButton" id="btnPhone">
+                        <div class="btnIcon">📞</div>
+                        <div class="btnLabel">Пробив номера</div>
+                    </div>
+                    <div class="menuButton" id="btnEmail">
+                        <div class="btnIcon">📧</div>
+                        <div class="btnLabel">Пробив email</div>
+                    </div>
+                    <div class="menuButton" id="btnIP">
+                        <div class="btnIcon">🌐</div>
+                        <div class="btnLabel">Пробив IP</div>
+                    </div>
+                    <div class="menuButton" id="btnVK">
+                        <div class="btnIcon">🔍</div>
+                        <div class="btnLabel">Поиск VK</div>
+                    </div>
+                    <div class="menuButton" id="btnMAC">
+                        <div class="btnIcon">💻</div>
+                        <div class="btnLabel">MAC адрес</div>
+                    </div>
+                    <div class="menuButton" id="btnID">
+                        <div class="btnIcon">🆔</div>
+                        <div class="btnLabel">Telegram ID</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <a href="https://t.me/antisear_bot">🤖 @antisear_bot</a> &nbsp;·&nbsp;
+                <a href="https://t.me/kepber">👤 @kepber</a> &nbsp;·&nbsp;
+                Dixyi &copy; 2025
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО ПОИСКА -->
+        <div id="searchModal">
+            <div class="modalBox">
+                <div class="cardTitle" id="modalTitle">📞 Пробив номера</div>
+                <input type="text" class="modalInput" id="searchInput" placeholder="+7 999 999-99-99" autocomplete="off">
+                <button class="actionButton primary" id="searchButton">🔍 НАЙТИ ДАННЫЕ</button>
+                <button class="actionButton secondary" id="closeModalButton">✕ ЗАКРЫТЬ</button>
+                <div class="resultBox" id="resultBox"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ОГОНЬКИ НА ФОНЕ ====================
+        var canvas = document.getElementById('bgCanvas');
+        var ctx = canvas.getContext('2d');
+        var width, height;
+        var particles = [];
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        for (var i = 0; i < 80; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                r: Math.random() * 2 + 0.5,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                o: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, width, height);
+            for (var i = 0; i < particles.length; i++) {
+                var p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(124,108,248,' + p.o + ')';
+                ctx.fill();
+            }
+            requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+
+        // ==================== ПЕРЕМЕННЫЕ ====================
+        var currentSearchType = 'phone';
+
+        var placeholders = {
+            phone: '+7 999 999-99-99',
+            email: 'example@gmail.com',
+            ip: '8.8.8.8',
+            vk: 'ID или имя',
+            mac: '00:1A:2B:3C:4D:5E',
+            id: '5817293461'
+        };
+
+        var modalTitles = {
+            phone: '📞 Пробив номера',
+            email: '📧 Пробив email',
+            ip: '🌐 Пробив IP',
+            vk: '🔍 Поиск VK',
+            mac: '💻 MAC адрес',
+            id: '🆔 Telegram ID'
+        };
+
+        // ==================== НАВИГАЦИЯ ====================
+        document.getElementById('startButton').addEventListener('click', function() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('menuScreen').classList.add('visible');
+            checkServerStatus();
+        });
+
+        document.getElementById('btnPhone').addEventListener('click', function() {
+            openSearchModal('phone');
+        });
+
+        document.getElementById('btnEmail').addEventListener('click', function() {
+            openSearchModal('email');
+        });
+
+        document.getElementById('btnIP').addEventListener('click', function() {
+            openSearchModal('ip');
+        });
+
+        document.getElementById('btnVK').addEventListener('click', function() {
+            openSearchModal('vk');
+        });
+
+        document.getElementById('btnMAC').addEventListener('click', function() {
+            openSearchModal('mac');
+        });
+
+        document.getElementById('btnID').addEventListener('click', function() {
+            openSearchModal('id');
+        });
+
+        document.getElementById('closeModalButton').addEventListener('click', function() {
+            closeSearchModal();
+        });
+
+        document.getElementById('searchModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeSearchModal();
+            }
+        });
+
+        document.getElementById('searchButton').addEventListener('click', function() {
+            performSearch();
+        });
+
+        document.getElementById('searchInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        function openSearchModal(type) {
+            currentSearchType = type;
+            document.getElementById('modalTitle').textContent = modalTitles[type];
+            document.getElementById('searchInput').placeholder = placeholders[type];
+            document.getElementById('searchInput').value = '';
+            document.getElementById('resultBox').classList.remove('visible');
+            document.getElementById('resultBox').innerHTML = '';
+            document.getElementById('searchModal').classList.add('visible');
+            setTimeout(function() {
+                document.getElementById('searchInput').focus();
+            }, 200);
+        }
+
+        function closeSearchModal() {
+            document.getElementById('searchModal').classList.remove('visible');
+        }
+
+        // ==================== ПОИСК ====================
+        async function performSearch() {
+            var searchValue = document.getElementById('searchInput').value.trim();
+            var resultBox = document.getElementById('resultBox');
+
+            if (searchValue.length === 0) {
+                return;
+            }
+
+            resultBox.classList.add('visible');
+            resultBox.innerHTML = '<div style="text-align:center;padding:16px;"><span class="spinner"></span><br><br>Идёт поиск...</div>';
+
+            if (currentSearchType === 'phone') {
+                var cleanedNumber = searchValue.replace(/\\D/g, '');
+                if (cleanedNumber.length < 10) {
+                    resultBox.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:12px;">❌ Неверный формат номера</div>';
+                    return;
+                }
+                try {
+                    var response = await fetch('https://htmlweb.ru/geo/api.php?json&telcod=' + cleanedNumber);
+                    var data = await response.json();
+                    var countryName = data.fullname || 'Неизвестно';
+                    var regionName = data.region ? data.region.name : 'Неизвестно';
+                    var cityName = data['0'] ? data['0'].name : 'Неизвестно';
+                    var operatorName = data['0'] ? data['0'].oper : 'Неизвестно';
+                    var brandName = data['0'] ? data['0'].oper_brand : 'Неизвестно';
+
+                    resultBox.innerHTML =
+                        '<div class="resultRow"><span class="resultKey">📱 Номер</span><span class="resultValue">' + searchValue + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🌍 Страна</span><span class="resultValue">' + countryName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">📍 Регион</span><span class="resultValue">' + regionName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🏙 Город</span><span class="resultValue">' + cityName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">📡 Оператор</span><span class="resultValue">' + operatorName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🏷 Бренд</span><span class="resultValue">' + brandName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">📋 Книги</span><span class="resultValue" style="font-size:10px;color:#2ecc71;">🟢 Доступно в @antisear_bot</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🔗 Соцсети</span><span class="resultValue" style="font-size:10px;color:#2ecc71;">🟢 Доступно в @antisear_bot</span></div>';
+                } catch (error) {
+                    resultBox.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:12px;">❌ Ошибка соединения с сервером</div>';
+                }
+            } else if (currentSearchType === 'ip') {
+                try {
+                    var response = await fetch('https://ipinfo.io/' + searchValue + '/json?token=1d26e0613d1988');
+                    var data = await response.json();
+                    var cityName = data.city || 'Неизвестно';
+                    var regionName = data.region || 'Неизвестно';
+                    var countryName = data.country || 'Неизвестно';
+                    var organizationName = data.org || 'Неизвестно';
+
+                    resultBox.innerHTML =
+                        '<div class="resultRow"><span class="resultKey">🌐 IP</span><span class="resultValue">' + searchValue + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🏙 Город</span><span class="resultValue">' + cityName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">📍 Регион</span><span class="resultValue">' + regionName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🌍 Страна</span><span class="resultValue">' + countryName + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🏢 Провайдер</span><span class="resultValue">' + organizationName + '</span></div>';
+                } catch (error) {
+                    resultBox.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:12px;">❌ Ошибка соединения с сервером</div>';
+                }
+            } else if (currentSearchType === 'mac') {
+                try {
+                    var response = await fetch('https://api.macvendors.com/' + searchValue);
+                    var vendorName = await response.text();
+                    resultBox.innerHTML =
+                        '<div class="resultRow"><span class="resultKey">💻 MAC</span><span class="resultValue">' + searchValue + '</span></div>' +
+                        '<div class="resultRow"><span class="resultKey">🏭 Производитель</span><span class="resultValue">' + (vendorName || 'Не найден') + '</span></div>';
+                } catch (error) {
+                    resultBox.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:12px;">❌ Ошибка соединения с сервером</div>';
+                }
+            } else {
+                var typeNames = { email: 'Email', vk: 'VK', id: 'Telegram ID' };
+                resultBox.innerHTML =
+                    '<div style="text-align:center;padding:16px;color:#6a6a90;">' +
+                    '<div style="font-size:32px;margin-bottom:8px;">⏳</div>' +
+                    '<b>' + searchValue + '</b><br><br>' +
+                    'Сервера основного бота отключены<br>или находятся в энергосбережении.<br><br>' +
+                    'При их включении данная функция<br>будет работать.<br><br>' +
+                    '<a href="https://t.me/antisear_bot" style="color:#7c6cf8;font-weight:600;">@antisear_bot</a>' +
+                    '</div>';
+            }
+        }
+
+        // ==================== СТАТУС СЕРВЕРОВ ====================
+        async function checkServerStatus() {
+            var statusPill = document.getElementById('statusPill');
+            var statusText = document.getElementById('statusText');
+
+            statusPill.className = 'statusPill checking';
+            statusText.textContent = 'Проверка серверов...';
+
+            var htmlwebOnline = false;
+            var botOnline = false;
+
+            try {
+                var controller = new AbortController();
+                setTimeout(function() { controller.abort(); }, 6000);
+                var htmlResponse = await fetch('https://htmlweb.ru/geo/api.php?json&telcod=79999999999', { signal: controller.signal });
+                if (htmlResponse.ok) {
+                    htmlwebOnline = true;
+                }
+            } catch (error) {
+                htmlwebOnline = false;
+            }
+
+            try {
+                var botResponse = await fetch('https://api.telegram.org/bot8953729393:AAH6SDumg4yzdNgh1l6AZqX39Das7zGg9gM/getMe');
+                var botData = await botResponse.json();
+                if (botData.ok) {
+                    botOnline = true;
+                }
+            } catch (error) {
+                botOnline = false;
+            }
+
+            if (htmlwebOnline && botOnline) {
+                statusPill.className = 'statusPill online';
+                statusText.textContent = '🟢 Все сервера работают';
+            } else if (htmlwebOnline && !botOnline) {
+                statusPill.className = 'statusPill online';
+                statusText.textContent = '🟡 Бот в энергосбережении';
+            } else if (!htmlwebOnline && botOnline) {
+                statusPill.className = 'statusPill online';
+                statusText.textContent = '🟡 Сайты недоступны';
+            } else {
+                statusPill.className = 'statusPill offline';
+                statusText.textContent = '🔴 Все сервера отключены';
+            }
+        }
+
+        // ==================== ЗАПУСК ====================
+        checkServerStatus();
+        setInterval(checkServerStatus, 30000);
+    </script>
+</body>
+</html>

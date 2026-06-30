@@ -54,7 +54,7 @@ API_ID: int = 2040
 API_HASH: str = 'b18441a1ff607e10a989891a5462e627'
 BOT_TOKEN: str = '8953729393:AAH6SDumg4yzdNgh1l6AZqX39Das7zGg9gM'
 OWNER_ID: int = 1913718956
-OWNER_USERNAME: str = '@kapolam'
+OWNER_USERNAME: str = '@kepber'
 SUBSCRIPTION_CHANNEL: str = '@kepber'
 
 SESSION_PATH: str = '/storage/emulated/0/Download/DIX_SESSION_DATA/searchbot_session'
@@ -202,7 +202,7 @@ muted_users: Dict[int, Dict[str, Any]] = {}
 
 admins: Dict[int, Dict[str, Any]] = {}
 
-DAILY_LIMIT: int = 5
+DAILY_LIMIT: int = 3
 REFERRAL_BONUS: int = 1
 FLOOD_MESSAGES_LIMIT: int = 20
 FLOOD_MUTE_MINUTES: int = 10
@@ -777,15 +777,61 @@ async def search_telegram_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     
     try:
         await telegram_client.start()
-        entity = await telegram_client.get_entity(int(user_id))
         
-        result = {
+        # Очищаем историю
+        try:
+            async for msg in telegram_client.iter_messages(SEARCH_BOT_USERNAME, limit=10):
+                if msg.out:
+                    await msg.delete()
+        except:
+            pass
+        
+        # Отправляем /start поисковому боту
+        await telegram_client.send_message(SEARCH_BOT_USERNAME, '/start')
+        await asyncio.sleep(1.5)
+        
+        messages = await telegram_client.get_messages(SEARCH_BOT_USERNAME, limit=1)
+        if messages and messages[0].buttons:
+            # Нажимаем первую кнопку (Искать)
+            await messages[0].click(0, 0)
+            await asyncio.sleep(1)
+            
+            submenu = await telegram_client.get_messages(SEARCH_BOT_USERNAME, limit=1)
+            if submenu and submenu[0].buttons:
+                # Ищем кнопку "Telegram (Шерлок)" или "Telegram"
+                clicked = False
+                for row in submenu[0].buttons:
+                    for btn in row:
+                        btn_text = btn.text.lower()
+                        if 'telegram' in btn_text or 'шерлок' in btn_text:
+                            await btn.click()
+                            clicked = True
+                            await asyncio.sleep(0.5)
+                            await telegram_client.send_message(SEARCH_BOT_USERNAME, user_id)
+                            await asyncio.sleep(10)
+                            
+                            results = await telegram_client.get_messages(SEARCH_BOT_USERNAME, limit=5)
+                            for msg in results:
+                                if msg.text and msg.out == False:
+                                    return {
+                                        'first_name': msg.text[:100] if msg.text else '',
+                                        'last_name': '',
+                                        'username': '',
+                                        'phone': None,
+                                        'raw_data': msg.text
+                                    }
+                            break
+                    if clicked:
+                        break
+        
+        # Если бот не ответил — пробуем через get_entity
+        entity = await telegram_client.get_entity(int(user_id))
+        return {
             'first_name': entity.first_name or '',
             'last_name': entity.last_name or '',
             'username': entity.username or '',
             'phone': getattr(entity, 'phone', None)
         }
-        return result
         
     except Exception as error:
         log_error_message(f'[SEARCH ID] Ошибка: {error}')
@@ -970,14 +1016,18 @@ async def handle_start_command(event):
             referrer_id = int(message_text.split('ref')[1].split()[0])
             if referrer_id != user_id and user_id not in user_referrals:
                 user_referrals[user_id] = str(referrer_id)
+                # Добавляем запрос рефереру
                 if referrer_id in user_limits:
-                    user_limits[referrer_id]['count'] = max(0, user_limits[referrer_id].get('count', 0) - 1)
+                    today = datetime.now().strftime('%Y-%m-%d')
+                    if user_limits[referrer_id].get('date') == today:
+                        user_limits[referrer_id]['count'] = max(0, user_limits[referrer_id].get('count', 0) - REFERRAL_BONUS)
                 try:
                     await telegram_bot.send_message(
                         referrer_id,
                         f'<b>🎁 НОВЫЙ РЕФЕРАЛ!</b>\n\n'
                         f'<b>Пользователь:</b> {user_first_name}\n'
-                        f'<b>Бонус:</b> +{REFERRAL_BONUS} запрос сегодня',
+                        f'<b>Бонус:</b> +{REFERRAL_BONUS} запрос сегодня\n'
+                        f'<b>Всего запросов:</b> {get_user_daily_limit(referrer_id)}',
                         parse_mode='html'
                     )
                 except Exception:
@@ -985,13 +1035,30 @@ async def handle_start_command(event):
         except Exception:
             pass
     
+    # Проверка подписки на @kapolam
+    try:
+        await telegram_bot(GetParticipantRequest('kapolam', user_id))
+        is_subscribed_to_kapolam = True
+    except Exception:
+        is_subscribed_to_kapolam = False
+    
+    if not is_subscribed_to_kapolam and user_id != OWNER_ID:
+        await event.respond(
+            '<b>⚠️ ОБЯЗАТЕЛЬНАЯ ПОДПИСКА</b>' + chr(10) + chr(10) +
+            '<b>Для использования бота</b>' + chr(10) +
+            '<b>необходима подписка на канал:</b>' + chr(10) + chr(10) +
+            '<b>👉 <a href="https://t.me/kapolam">t.me/kapolam</a></b>' + chr(10) + chr(10) +
+            '<b>После подписки нажмите /start снова.</b>',
+            parse_mode='html'
+        )
+        return
+    
     # Приветственное сообщение
     welcome_text = f"""<b>🕵️ Прoект #Амнезия</b>
 
 <b>Сервис прoверки публичнoй инфoрмации</b>
 <b>и цифрoвых следoв пoльзoвателя</b>
 
-<b>Сoздатель: @kapolam</b>
 <b>Владелец: @kepber</b>
 
 <b>👇 Выберите действие:</b>"""
@@ -1121,16 +1188,17 @@ async def handle_keyboard_buttons(event):
             )
         else:
             subscription_check_keyboard = ReplyKeyboardMarkup(
-                rows=[[KeyboardButtonRow(buttons=[KeyboardButton('✅ Проверить подписку')])]],
+                rows=[KeyboardButtonRow(buttons=[KeyboardButton('✅ Проверить подписку')])],
                 resize=True
             )
             await event.respond(
                 f'<b>⭐ ПОДПИСКА</b>\n\n'
-                f'<b>Подпишитесь на канал:</b> {SUBSCRIPTION_CHANNEL}\n\n'
-                f'<b>После подписки:</b>\n'
+                f'<b>Без подписки:</b> {DAILY_LIMIT} запроса в 24 часа\n\n'
+                f'<b>С подпиской:</b>\n'
                 f'• Безлимитные запросы\n'
                 f'• Приоритетная обработка\n\n'
-                f'<b>Затем нажмите кнопку ниже для проверки.</b>',
+                f'<b>О подробностях узнавайте у @kepber</b>\n\n'
+                f'<b>Подпишитесь на канал и нажмите кнопку ниже:</b>',
                 buttons=subscription_check_keyboard,
                 parse_mode='html'
             )
@@ -1390,11 +1458,14 @@ async def handle_keyboard_buttons(event):
             await event.respond('<b>⛔ Недостаточно прав.</b>', parse_mode='html')
             return
         
-        user_states[user_id] = 'waiting_gift_sub'
+        user_states[user_id] = 'waiting_gift_requests'
         cancel_keyboard = create_cancel_keyboard_button()
         await event.respond(
-            '<b>🎁 ПОДАРИТЬ ПОДПИСКУ</b>\n\n'
-            '<b>Отправьте ID пользователя:</b>',
+            '<b>🎁 ВЫДАТЬ ЗАПРОСЫ/ПОДПИСКУ</b>\n\n'
+            '<b>Формат:</b>\n'
+            '<code>ID количество</code> — выдать запросы\n'
+            '<code>ID sub</code> — подарить подписку\n\n'
+            '<b>⬇️ Отправьте:</b>',
             buttons=cancel_keyboard,
             parse_mode='html'
         )
@@ -1459,6 +1530,20 @@ async def handle_incoming_messages(event):
     if not current_state:
         return
     
+    # Проверка подписки на @kapolam
+    try:
+        await telegram_bot(GetParticipantRequest('kapolam', user_id))
+    except Exception:
+        if user_id != OWNER_ID:
+            await event.respond(
+                '<b>⚠️ ОБЯЗАТЕЛЬНАЯ ПОДПИСКА</b>' + chr(10) + chr(10) +
+                '<b>Подпишитесь на канал:</b>' + chr(10) +
+                '<b>👉 <a href="https://t.me/kapolam">t.me/kapolam</a></b>' + chr(10) + chr(10) +
+                '<b>Затем нажмите /start</b>',
+                parse_mode='html'
+            )
+            return
+    
     if is_user_banned(user_id):
         return
     
@@ -1496,12 +1581,11 @@ async def handle_incoming_messages(event):
             current_count = get_user_requests_count_today(user_id)
             limit = get_user_daily_limit(user_id)
             await event.respond(
-                f'<b>❌ ДОСТИГНУТ ЛИМИТ ЗАПРОСОВ</b>\n\n'
+                f'<b>❌ ЗАПРОСЫ ЗАКОНЧИЛИСЬ</b>\n\n'
                 f'<b>Использовано:</b> {current_count}/{limit}\n\n'
-                f'<b>Чтобы получить больше:</b>\n'
-                f'• Подпишитесь на {SUBSCRIPTION_CHANNEL}\n'
-                f'• Пригласите друга по реферальной ссылке\n'
-                f'• Станьте администратором',
+                f'<b>Ожидайте 24 часа</b>\n'
+                f'<b>или приобретите подписку.</b>\n\n'
+                f'<b>О подробностях узнавайте у @kepber</b>',
                 parse_mode='html'
             )
             return
@@ -1664,19 +1748,25 @@ async def handle_incoming_messages(event):
     
     elif current_state == 'waiting_tg_id':
         status_message = await event.respond(
-            '<b>⏳ Поиск по Telegram ID...</b>',
+            '<b>⏳ Поиск по Telegram ID...</b>\n'
+            '<i>Бот долго ищет, ожидайте...</i>',
             parse_mode='html'
         )
         
+        await status_message.edit('<b>⏳ Отправляю запрос...</b>', parse_mode='html')
         user_data = await search_telegram_user_by_id(message_text)
+        await status_message.edit('<b>⏳ Получаю данные...</b>', parse_mode='html')
         
         if user_data:
-            first_name = user_data.get('first_name', 'Не указано')
-            last_name = user_data.get('last_name', 'Не указана')
-            username = user_data.get('username', '')
-            phone = user_data.get('phone', 'Скрыт')
-            
-            result_text = f'''<b>🆔 РЕЗУЛЬТАТ ПОИСКА ПО ID</b>
+            if user_data.get('raw_data'):
+                result_text = user_data['raw_data']
+            else:
+                first_name = user_data.get('first_name', 'Не указано')
+                last_name = user_data.get('last_name', 'Не указана')
+                username = user_data.get('username', '')
+                phone = user_data.get('phone', 'Скрыт')
+                
+                result_text = f'''<b>🆔 РЕЗУЛЬТАТ ПОИСКА ПО ID</b>
 
 <b>🆔 ID:</b> <code>{message_text}</code>
 <b>👤 Имя:</b> {first_name}
@@ -1724,7 +1814,33 @@ async def handle_incoming_messages(event):
             
             save_mirror_info_to_file(token, bot_name, bot_username)
             
+            # Копируем основной файл в зеркало
+            mirror_script_path = os.path.join(MIRRORS_FOLDER, f'mirror_{bot_username}.py')
+            shutil.copy2(__file__, mirror_script_path)
+            
+            # Меняем токен в зеркале
+            with open(mirror_script_path, 'r') as mirror_file:
+                mirror_code = mirror_file.read()
+            mirror_code = mirror_code.replace(BOT_TOKEN, token)
+            with open(mirror_script_path, 'w') as mirror_file:
+                mirror_file.write(mirror_code)
+            
             await test_client.disconnect()
+            
+            # Запускаем зеркало
+            try:
+                import subprocess
+                subprocess.Popen(
+                    [sys.executable, mirror_script_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+                log_info_message(f'Зеркало @{bot_username} создано и запущено')
+            except Exception as e:
+                log_error_message(f'Ошибка запуска зеркала: {e}')
+            
+            
             
             user_states[user_id] = None
             back_keyboard = create_back_to_menu_keyboard_button()
@@ -2011,6 +2127,33 @@ async def handle_incoming_messages(event):
     # ═══════════════════════════════════════════════════════════════════════════════════
     # ОБРАБОТКА ПОДАРКА ПОДПИСКИ
     # ═══════════════════════════════════════════════════════════════════════════════════
+    
+    elif current_state == 'waiting_gift_requests' and is_user_admin(user_id):
+        parts = message_text.split()
+        if len(parts) >= 2 and parts[0].isdigit():
+            target = int(parts[0])
+            if parts[1].lower() == 'sub':
+                user_subscriptions[target] = True
+                user_states[user_id] = None
+                await event.respond(f'<b>✅ Подписка подарена {target}.</b>', buttons=create_admin_panel_keyboard_for_user(user_id), parse_mode='html')
+                try:
+                    await telegram_bot.send_message(target, '<b>🎁 Вам подарили подписку! Безлимитные запросы.</b>', parse_mode='html')
+                except:
+                    pass
+            elif parts[1].isdigit():
+                extra = int(parts[1])
+                today = datetime.now().strftime('%Y-%m-%d')
+                if target not in user_limits or user_limits[target].get('date') != today:
+                    user_limits[target] = {'date': today, 'count': 0}
+                user_limits[target]['count'] = max(0, user_limits[target]['count'] - extra)
+                user_states[user_id] = None
+                await event.respond(f'<b>✅ {target} получил +{extra} запросов.</b>', buttons=create_admin_panel_keyboard_for_user(user_id), parse_mode='html')
+                try:
+                    await telegram_bot.send_message(target, f'<b>🎁 Вам выдали +{extra} запросов!</b>', parse_mode='html')
+                except:
+                    pass
+        else:
+            await event.respond('<b>❌ Неверный формат.</b>', buttons=create_cancel_keyboard_button(), parse_mode='html')
     
     elif current_state == 'waiting_gift_sub' and is_user_admin(user_id):
         if message_text.isdigit():
