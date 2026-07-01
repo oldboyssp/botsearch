@@ -57,15 +57,20 @@ OWNER_ID: int = 1913718956
 OWNER_USERNAME: str = '@kepber'
 SUBSCRIPTION_CHANNEL: str = '@kepber'
 
-SESSION_PATH: str = '/storage/emulated/0/Download/DIX_SESSION_DATA/searchbot_session'
-MIRRORS_FOLDER: str = '/storage/emulated/0/Download/DIX_MIRRORS'
-MIRRORS_FILE: str = '/storage/emulated/0/Download/DIX_MIRRORS/mirrors.json'
-DATABASE_FILE: str = '/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_results.db'
-WHITELIST_FILE: str = '/storage/emulated/0/Download/DIX_TOTAL_BOT/dix_whitelist.json'
-LOGS_FOLDER: str = '/storage/emulated/0/Download/DIX_LOGS'
-ADMINS_FILE: str = '/storage/emulated/0/Download/DIX_TOTAL_BOT/admins.json'
-BANS_FILE: str = '/storage/emulated/0/Download/DIX_TOTAL_BOT/bans.json'
-MUTES_FILE: str = '/storage/emulated/0/Download/DIX_TOTAL_BOT/mutes.json'
+SESSION_PATH: str = './sessions/searchbot_session'
+SEARCH_ID_SESSION: str = './sessions/search_id_session'
+SEARCH_ID_SESSION: str = './sessions/search_id_session'
+SEARCH_ID_SESSION: str = './sessions/search_id_session'
+SEARCH_ID_SESSION: str = './sessions/search_id_session'
+SEARCH_ID_SESSION: str = './sessions/search_id_session'
+MIRRORS_FOLDER: str = './mirrors'
+MIRRORS_FILE: str = './mirrors/mirrors.json'
+DATABASE_FILE: str = './dix_results.db'
+WHITELIST_FILE: str = './dix_whitelist.json'
+LOGS_FOLDER: str = './logs'
+ADMINS_FILE: str = './admins.json'
+BANS_FILE: str = './bans.json'
+MUTES_FILE: str = './mutes.json'
 
 SEARCH_BOT_USERNAME: str = '@sjgdfj0ghjdhjjegtjjebot'
 
@@ -773,7 +778,7 @@ async def lookup_mac_address_api(mac_address: str) -> Optional[str]:
         return None
 
 async def search_telegram_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
-    telegram_client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
+    telegram_client = TelegramClient(SEARCH_ID_SESSION, API_ID, API_HASH)
     
     try:
         await telegram_client.start()
